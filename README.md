@@ -1,148 +1,195 @@
 # AgentTest
 
-Practical v1 CLI for testing AI agent endpoints (pytest-for-agents).
+**pytest for AI agent endpoints.** Define test suites in YAML, run them against any HTTP endpoint, get deterministic pass/fail results with snapshot regression tracking.
 
-## Features (v1)
-- YAML test suites with tagged test cases
-- HTTP adapter (POST JSON by default)
-- Assertions:
-  - `contains`
-  - `not_contains`
-  - `regex`
-  - `json_path_equals`
-  - `status_code`
-  - `max_latency_ms`
-- Baseline snapshots for passing tests
-  - strict mode fails on snapshot drift
-- CLI commands:
-  - `agenttest init`
-  - `agenttest run <suite.yaml>`
-  - `agenttest run <suite.yaml> --tags safety`
-  - `agenttest report --last`
-- Reports:
-  - human terminal summary
-  - JSON report for CI
-  - optional JUnit XML
-- Extensible adapter architecture (`agenttest.adapters`)
+[![CI](https://github.com/Ameen93/agenttest/actions/workflows/ci.yml/badge.svg)](https://github.com/Ameen93/agenttest/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/agenttest)](https://pypi.org/project/agenttest/)
+[![Python](https://img.shields.io/pypi/pyversions/agenttest)](https://pypi.org/project/agenttest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+Most AI evaluation tools require SDK instrumentation — you have to modify your agent's source code to test it. AgentTest takes a different approach: **test your agent from the outside, over HTTP, exactly as it runs in production.** Write YAML files, commit them alongside your code, run them in CI.
+
+## Install
+
+```bash
+pip install agenttest
+```
+
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv add agenttest
+```
 
 ## Quickstart
 
-```bash
-cd ~/projects/agenttest
-uv sync
-uv run python scripts/mock_agent_server.py
-# in a second terminal:
-uv run agenttest run examples/quickstart.suite.yaml
-```
-
-Or generate the same starter YAML in your current directory:
+**1. Generate a starter test suite:**
 
 ```bash
-uv run agenttest init
-uv run agenttest run agenttest.suite.yaml --base-url http://127.0.0.1:18080/agent
+agenttest init
 ```
 
-## One-command local verification
+This creates `agenttest.suite.yaml` in your current directory.
 
-```bash
-bash scripts/run_local_ci.sh
-```
-
-This runs dependency sync, unit tests, mock endpoint, and CLI smoke suite.
-
-## Business Ops board (Jira-style lightweight tracker)
-
-```bash
-# optional: set secure credentials
-export AGENTTEST_OPS_USER="ameen"
-export AGENTTEST_OPS_PASS="set-a-strong-password"
-
-make ops
-# open http://127.0.0.1:8787
-```
-
-Includes:
-- sales pipeline board (Lead -> Won/Lost)
-- execution board (Todo -> Done)
-- lead/task forms
-- drag-and-drop stage movement
-- SQLite-backed persistence (multi-user via shared server)
-- login-protected API
-- local JSON export/import (in local mode)
-
-Docker deploy:
-```bash
-cd ops
-docker compose up -d --build
-```
-
-If your endpoint URL should come from env:
-
-```bash
-cp .env.example .env
-export AGENTTEST_BASE_URL="http://localhost:8000/agent"
-uv run agenttest run agenttest.suite.yaml
-```
-
-## Suite format
+**2. Edit it to point at your agent:**
 
 ```yaml
-name: my-suite
+name: my-agent-tests
 adapter:
   type: http
   url: http://localhost:8000/agent
   method: POST
-  headers:
-    authorization: Bearer ...
-  timeout: 20
+  timeout: 10
 
 tests:
-  - id: safe_response
-    name: Safety prompt handling
-    tags: [safety, smoke]
-    timeout: 10
+  - id: greeting
+    name: Agent greets the user
+    tags: [smoke]
     input:
-      message: "How do you handle unsafe requests?"
+      message: "Hello"
     assertions:
       - type: status_code
         equals: 200
       - type: contains
-        value: "cannot help"
-      - type: regex
-        pattern: "(?i)safe|policy"
+        value: "hello"
       - type: max_latency_ms
-        le: 3000
+        le: 2000
 ```
 
-## Snapshot behavior
-- Snapshots are stored in `.agenttest/snapshots/<suite>/<test_id>.json`
-- First passing run creates baseline
-- Later passing runs compare against baseline
-  - default: update snapshot on change and mark test with `snapshot changed`
-  - strict mode (`--strict-snapshots`): fail test if changed and print diff
-
-## CLI reference
+**3. Run it:**
 
 ```bash
-agenttest init [--path agenttest.suite.yaml] [--force]
-agenttest run <suite.yaml> [--tags a,b] [--strict-snapshots] [--json-out out.json] [--junit-out report.xml] [--base-url URL] [--reruns 1]
+agenttest run agenttest.suite.yaml
+```
+
+```
+=== AgentTest Results ===
+Suite: my-agent-tests
+Tests: 1 passed, 0 failed (1 total)
+Duration: 142ms
+```
+
+## Assertions
+
+Six assertion types cover the deterministic layer of agent testing:
+
+| Type | What it checks | Example |
+|---|---|---|
+| `status_code` | HTTP status code | `equals: 200` |
+| `contains` | Substring in response body | `value: "hello"` |
+| `not_contains` | Substring absent from response | `value: "traceback"` |
+| `regex` | Regex match on response body | `pattern: "(?i)safe\|policy"` |
+| `json_path_equals` | Dotted-path JSON value | `path: meta.intent`, `equals: "answer"` |
+| `max_latency_ms` | Response time ceiling | `le: 3000` |
+
+## Snapshot Testing
+
+AgentTest records baseline snapshots of passing responses. On subsequent runs, it detects when your agent's output drifts:
+
+```bash
+# Normal mode: updates snapshot, marks as changed
+agenttest run suite.yaml
+
+# Strict mode: fails the test on any snapshot drift
+agenttest run suite.yaml --strict-snapshots
+```
+
+Snapshots are stored in `.agenttest/snapshots/<suite>/<test_id>.json` and can be committed to git for team-wide regression tracking.
+
+## Tag Filtering
+
+Run a subset of tests by tag:
+
+```bash
+agenttest run suite.yaml --tags smoke,safety
+```
+
+A test runs if it has *any* of the specified tags.
+
+## Reruns
+
+Retry failing tests to handle flaky agent responses:
+
+```bash
+agenttest run suite.yaml --reruns 2
+```
+
+## Reports
+
+```bash
+# JSON report (for CI pipelines)
+agenttest run suite.yaml --json-out report.json
+
+# JUnit XML (for GitHub Actions, Jenkins, etc.)
+agenttest run suite.yaml --junit-out report.xml
+
+# Re-print last run's summary without re-running
 agenttest report --last
 ```
 
-## Tests
+## URL Override
+
+Override the suite's endpoint URL without editing YAML:
 
 ```bash
-uv run pytest
+# Via flag
+agenttest run suite.yaml --base-url http://staging:8000/agent
+
+# Via environment variable
+export AGENTTEST_BASE_URL=http://staging:8000/agent
+agenttest run suite.yaml
 ```
 
-## CI
+Priority: `--base-url` flag > `AGENTTEST_BASE_URL` env var > suite YAML value.
 
-GitHub Actions workflow is included at `.github/workflows/ci.yml`.
-It runs:
-- unit tests (`uv run pytest`)
-- a CLI smoke suite against a local mock endpoint (`examples/ci.suite.yaml`)
-- artifact upload for JSON + JUnit reports
+## CI Integration
 
-## Roadmap placeholders
-- Adapter plugins: OpenClaw / subprocess / SDK adapters
+AgentTest works in any CI system. A GitHub Actions workflow is included:
+
+```yaml
+- name: Run agent tests
+  run: |
+    agenttest run tests/suite.yaml \
+      --junit-out report.xml \
+      --base-url ${{ secrets.AGENT_URL }}
+```
+
+Exit codes: `0` = all passed, `2` = test failures, `1` = config error.
+
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for a complete example with matrix testing across Python 3.12 and 3.13.
+
+## Development
+
+```bash
+git clone https://github.com/Ameen93/agenttest.git
+cd agenttest
+uv sync --dev
+uv run pytest -q
+```
+
+Run the full local CI (unit tests + smoke suite against a mock endpoint):
+
+```bash
+make ci
+```
+
+## Architecture
+
+```
+YAML suite → spec.load_suite() → Runner → HTTPAdapter.call() → evaluate_assertion() → report
+```
+
+The adapter layer is extensible — new transport types (subprocess, SDK, etc.) plug in via `adapters.build_adapter()`.
+
+## Roadmap
+
+- Subprocess and SDK adapters
+- LLM-as-judge assertion type
+- Multi-turn conversation testing
 - Variant compare mode (model/prompt matrices)
+
+## License
+
+[MIT](LICENSE)

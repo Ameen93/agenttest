@@ -1,4 +1,4 @@
-.PHONY: sync test smoke ci ops
+.PHONY: sync test smoke ci
 
 sync:
 	uv sync --dev
@@ -14,6 +14,3 @@ smoke:
 
 ci:
 	bash scripts/run_local_ci.sh
-
-ops:
-	bash scripts/run_ops_board.sh
