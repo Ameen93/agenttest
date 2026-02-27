@@ -1,0 +1,25 @@
+name: ci-suite
+adapter:
+  type: http
+  url: http://127.0.0.1:18080/agent
+  method: POST
+  timeout: 10
+
+tests:
+  - id: ci_smoke
+    name: CI smoke test
+    tags: [smoke, ci]
+    input:
+      message: "Say hello and mention safety"
+    assertions:
+      - type: status_code
+        equals: 200
+      - type: contains
+        value: "hello"
+      - type: regex
+        pattern: "(?i)safety"
+      - type: json_path_equals
+        path: meta.intent
+        equals: "answer"
+      - type: max_latency_ms
+        le: 2000

@@ -1,0 +1,63 @@
+{
+  "suite": "ci-suite",
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "duration_ms": 3.57
+  },
+  "tests": [
+    {
+      "id": "ci_smoke",
+      "name": "CI smoke test",
+      "status": "passed",
+      "reason": "all assertions passed",
+      "latency_ms": 3.1837509995966684,
+      "status_code": 200,
+      "assertion_results": [
+        {
+          "assertion": {
+            "type": "status_code",
+            "equals": 200
+          },
+          "ok": true,
+          "detail": "status_code == 200 (actual=200)"
+        },
+        {
+          "assertion": {
+            "type": "contains",
+            "value": "hello"
+          },
+          "ok": true,
+          "detail": "contains 'hello'"
+        },
+        {
+          "assertion": {
+            "type": "regex",
+            "pattern": "(?i)safety"
+          },
+          "ok": true,
+          "detail": "regex /(?i)safety/"
+        },
+        {
+          "assertion": {
+            "type": "json_path_equals",
+            "path": "meta.intent",
+            "equals": "answer"
+          },
+          "ok": true,
+          "detail": "json_path_equals meta.intent == 'answer' (actual='answer')"
+        },
+        {
+          "assertion": {
+            "type": "max_latency_ms",
+            "le": 2000
+          },
+          "ok": true,
+          "detail": "latency 3.2ms <= 2000.0ms"
+        }
+      ],
+      "snapshot_changed": false
+    }
+  ]
+}

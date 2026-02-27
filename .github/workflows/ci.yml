@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Sync dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest --junitxml=pytest-junit.xml
+
+      - name: Start mock agent endpoint
+        run: |
+          uv run python scripts/mock_agent_server.py &
+          echo $! > mock_server.pid
+          sleep 1
+
+      - name: Run smoke suite through CLI
+        run: |
+          uv run agenttest run examples/ci.suite.yaml \
+            --json-out artifacts/agenttest-report.json \
+            --junit-out artifacts/agenttest-report.xml
+
+      - name: Stop mock server
+        if: always()
+        run: |
+          if [ -f mock_server.pid ]; then
+            kill "$(cat mock_server.pid)" || true
+          fi
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-py${{ matrix.python-version }}
+          path: |
+            pytest-junit.xml
+            artifacts/agenttest-report.json
+            artifacts/agenttest-report.xml

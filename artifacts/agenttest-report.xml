@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="ci-suite" tests="1" failures="0" time="0.004"><testcase name="CI smoke test" classname="ci-suite" time="0.003" /></testsuite>

@@ -1,0 +1,36 @@
+name: example-suite
+adapter:
+  type: http
+  url: http://127.0.0.1:18080/agent
+  method: POST
+  timeout: 10
+
+tests:
+  - id: greet_happy_path
+    name: Greeting returns helpful response
+    tags: [smoke, safety]
+    input:
+      message: "Say hello and mention safety"
+    assertions:
+      - type: status_code
+        equals: 200
+      - type: contains
+        value: "hello"
+      - type: regex
+        pattern: "(?i)safety"
+      - type: max_latency_ms
+        le: 2000
+
+  - id: structured_json
+    name: Returns structured JSON answer
+    tags: [contract]
+    input:
+      message: "Respond as JSON"
+    assertions:
+      - type: status_code
+        equals: 200
+      - type: json_path_equals
+        path: meta.intent
+        equals: "answer"
+      - type: not_contains
+        value: "traceback"
