@@ -17,6 +17,7 @@ class AdapterResponse:
     json: Any
     latency_ms: float
     headers: dict[str, str]
+    raw_text: str = ""
 
 
 class HTTPAdapter:
@@ -34,17 +35,32 @@ class HTTPAdapter:
         )
         latency_ms = (time.perf_counter() - t0) * 1000
 
+        raw_text = response.text
+        logical_text = raw_text
+
+        if self.config.stream_mode:
+            from agenttest.streaming import PARSERS
+
+            parser = PARSERS[self.config.stream_mode]
+            logical_text = parser(raw_text)
+
         try:
-            parsed = response.json()
-        except json.JSONDecodeError:
+            parsed = json.loads(logical_text) if not self.config.stream_mode else None
+        except (json.JSONDecodeError, ValueError):
             parsed = None
+        if parsed is None and not self.config.stream_mode:
+            try:
+                parsed = response.json()
+            except json.JSONDecodeError:
+                parsed = None
 
         return AdapterResponse(
             status_code=response.status_code,
-            text=response.text,
+            text=logical_text,
             json=parsed,
             latency_ms=latency_ms,
             headers=dict(response.headers),
+            raw_text=raw_text,
         )
 
 

@@ -73,7 +73,7 @@ Duration: 142ms
 
 ## Assertions
 
-Six assertion types cover the deterministic layer of agent testing:
+Eight assertion types cover the deterministic and semantic layers of agent testing:
 
 | Type | What it checks | Example |
 |---|---|---|
@@ -83,6 +83,26 @@ Six assertion types cover the deterministic layer of agent testing:
 | `regex` | Regex match on response body | `pattern: "(?i)safe\|policy"` |
 | `json_path_equals` | Dotted-path JSON value | `path: meta.intent`, `equals: "answer"` |
 | `max_latency_ms` | Response time ceiling | `le: 3000` |
+| `min_latency_ms` | Response time floor (detect skipped tool use) | `ge: 1000` |
+| `llm_judge` | LLM-based semantic evaluation | `criteria: "Is the response helpful?"` |
+
+### LLM-as-Judge
+
+For semantic quality checks that go beyond keyword matching:
+
+```yaml
+assertions:
+  - type: llm_judge
+    criteria: "Did the assistant provide helpful, accurate advice?"
+    pass_threshold: 0.8   # score 0.0–1.0, default 0.8
+    model: claude-haiku-4-5-20251001  # optional, default haiku
+```
+
+Requires the optional `anthropic` dependency:
+
+```bash
+pip install agenttest[llm-judge]
+```
 
 ## Snapshot Testing
 
@@ -108,6 +128,43 @@ agenttest run suite.yaml --tags smoke,safety
 
 A test runs if it has *any* of the specified tags.
 
+## Streaming Responses
+
+Test streaming endpoints (SSE, NDJSON, Vercel AI SDK) by setting `stream_mode` on the adapter. AgentTest buffers the stream and parses it into logical text before running assertions:
+
+```yaml
+adapter:
+  type: http
+  url: http://localhost:3000/api/chat
+  method: POST
+  stream_mode: ai-sdk-ui   # also: sse, ndjson
+```
+
+Supported modes:
+- **`sse`** — Server-Sent Events (`data:` lines)
+- **`ndjson`** — Newline-delimited JSON (extracts `text`/`content`/`delta.content`)
+- **`ai-sdk-ui`** — Vercel AI SDK format (`0:"text"` lines)
+
+## Multi-Turn Conversations
+
+Test stateful conversation flows where each turn uses the AI's actual previous responses:
+
+```yaml
+- id: qualification_flow
+  type: conversation
+  turns:
+    - user: "I want a Toyota Hilux"
+      assertions:
+        - type: contains
+          value: "budget"
+    - user: "Around R600k"
+      assertions:
+        - type: regex
+          pattern: "(?i)dealer"
+```
+
+Each turn sends the accumulated message history to the endpoint as `{"messages": [...]}`.
+
 ## Reruns
 
 Retry failing tests to handle flaky agent responses:
@@ -115,6 +172,41 @@ Retry failing tests to handle flaky agent responses:
 ```bash
 agenttest run suite.yaml --reruns 2
 ```
+
+## Flaky Threshold
+
+For non-deterministic AI responses, require N passes out of M attempts:
+
+```yaml
+- id: creative_test
+  flaky_threshold: 2/3  # pass if 2 out of 3 attempts pass
+  input: { message: "Write a poem" }
+  assertions:
+    - type: contains
+      value: "rhyme"
+```
+
+Unlike `--reruns` (which stops at first pass), flaky threshold always runs all M attempts.
+
+## Tag Ordering & Fail-Fast
+
+Control test execution order by tag priority and stop on first failure:
+
+```bash
+# Run smoke tests first, then safety, then the rest
+agenttest run suite.yaml --tags-order smoke,safety --fail-fast
+```
+
+## Cost Tracking
+
+If your agent returns token usage in response headers (`x-usage-input-tokens`, `x-usage-output-tokens`), AgentTest tracks and reports them:
+
+```
+Summary: total=5 passed=5 failed=0 duration=1234.5ms
+Tokens: input=2500 output=1800
+```
+
+Token counts are also included in the JSON report under `summary.input_tokens` and `summary.output_tokens`.
 
 ## Reports
 
@@ -186,8 +278,6 @@ The adapter layer is extensible — new transport types (subprocess, SDK, etc.) 
 ## Roadmap
 
 - Subprocess and SDK adapters
-- LLM-as-judge assertion type
-- Multi-turn conversation testing
 - Variant compare mode (model/prompt matrices)
 
 ## License

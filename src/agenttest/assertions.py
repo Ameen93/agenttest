@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -67,9 +68,54 @@ def evaluate_assertion(assertion: dict[str, Any], *, status_code: int, body_text
             ok = latency_ms <= maximum
             return ok, f"latency {latency_ms:.1f}ms <= {maximum:.1f}ms"
 
+        if atype == "min_latency_ms":
+            minimum = float(assertion["ge"])
+            ok = latency_ms >= minimum
+            return ok, f"latency {latency_ms:.1f}ms >= {minimum:.1f}ms"
+
+        if atype == "llm_judge":
+            return _evaluate_llm_judge(assertion, body_text)
+
         return False, f"unknown assertion type '{atype}'"
 
     except KeyError as e:
         return False, f"assertion '{atype}' missing key {e}"
     except (AssertionErrorDetail, IndexError, ValueError, TypeError) as e:
         return False, f"assertion '{atype}' error: {e}"
+
+
+def _evaluate_llm_judge(assertion: dict[str, Any], body_text: str) -> tuple[bool, str]:
+    try:
+        import anthropic
+    except ImportError:
+        return False, "llm_judge requires 'anthropic' package (install with: pip install agenttest[llm-judge])"
+
+    criteria = assertion.get("criteria", "")
+    if not criteria:
+        return False, "llm_judge assertion missing 'criteria'"
+
+    model = assertion.get("model", "claude-haiku-4-5-20251001")
+    pass_threshold = float(assertion.get("pass_threshold", 0.8))
+
+    judge_prompt = (
+        "You are an AI judge evaluating a response. Score the response on this criteria:\n\n"
+        f"Criteria: {criteria}\n\n"
+        f"Response to evaluate:\n{body_text}\n\n"
+        'Respond with ONLY a JSON object: {"score": <0.0-1.0>, "reasoning": "<brief explanation>"}'
+    )
+
+    try:
+        client = anthropic.Anthropic()
+        message = client.messages.create(
+            model=model,
+            max_tokens=256,
+            messages=[{"role": "user", "content": judge_prompt}],
+        )
+        raw = message.content[0].text.strip()
+        result = json.loads(raw)
+        score = float(result["score"])
+        reasoning = result.get("reasoning", "")
+        ok = score >= pass_threshold
+        return ok, f"llm_judge score={score:.2f} (threshold={pass_threshold}) reasoning={reasoning}"
+    except Exception as e:
+        return False, f"llm_judge error: {e}"

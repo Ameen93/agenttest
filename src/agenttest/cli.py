@@ -58,10 +58,13 @@ def _print_run(report: dict) -> None:
         icon = "✅" if t["status"] == "passed" else "❌"
         snap_note = " (snapshot changed)" if t.get("snapshot_changed") else ""
         print(f"{icon} {t['id']} - {t['reason']}{snap_note} [{t['latency_ms']:.1f}ms]")
-    print(
+    line = (
         f"\nSummary: total={summary['total']} passed={summary['passed']} "
         f"failed={summary['failed']} duration={summary['duration_ms']:.1f}ms"
     )
+    if summary.get("input_tokens") or summary.get("output_tokens"):
+        line += f"\nTokens: input={summary.get('input_tokens', 0)} output={summary.get('output_tokens', 0)}"
+    print(line)
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -84,6 +87,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         suite.adapter.url = os.environ["AGENTTEST_BASE_URL"]
 
     tags = set(args.tags.split(",")) if args.tags else None
+    tags_order = args.tags_order.split(",") if args.tags_order else None
 
     runner = Runner(suite=suite, state_dir=STATE_DIR)
     report = runner.run(
@@ -91,6 +95,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             strict_snapshots=args.strict_snapshots,
             tags=tags,
             reruns=args.reruns,
+            tags_order=tags_order,
+            fail_fast=args.fail_fast,
         )
     )
 
@@ -141,6 +147,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--junit-out", help="Write JUnit XML output")
     p_run.add_argument("--base-url", help="Override adapter URL (or use AGENTTEST_BASE_URL)")
     p_run.add_argument("--reruns", type=int, default=0, help="Retry failing tests N additional times")
+    p_run.add_argument("--tags-order", help="Comma-separated tag priority for test ordering (e.g. smoke,safety)")
+    p_run.add_argument("--fail-fast", action="store_true", help="Stop on first test failure")
     p_run.set_defaults(func=cmd_run)
 
     p_report = sub.add_parser("report", help="Report commands")
