@@ -6,3 +6,22 @@ artifacts/
 *.pyc
 .env
 CLAUDE.md
+.claude/
+
+# Packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# OS
+.DS_Store
