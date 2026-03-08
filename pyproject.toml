@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
-  { name = "Ameen" },
+  { name = "Ameen", email = "ameen@users.noreply.github.com" },
 ]
 keywords = ["ai", "agent", "testing", "llm", "evaluation", "yaml", "cli"]
 classifiers = [
@@ -31,6 +31,7 @@ llm-judge = ["anthropic>=0.40.0"]
 Homepage = "https://github.com/Ameen93/agenttest"
 Repository = "https://github.com/Ameen93/agenttest"
 Issues = "https://github.com/Ameen93/agenttest/issues"
+Changelog = "https://github.com/Ameen93/agenttest/blob/master/CHANGELOG.md"
 
 [project.scripts]
 agenttest = "agenttest.cli:main"
@@ -42,6 +43,15 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
   "pytest>=8.3.0",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/artifacts",
+  "/scripts",
+  "CLAUDE.md",
+  ".claude/",
 ]
 
 [tool.pytest.ini_options]

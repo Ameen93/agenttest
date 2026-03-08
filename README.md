@@ -9,7 +9,7 @@
 
 ---
 
-Most AI evaluation tools require SDK instrumentation — you have to modify your agent's source code to test it. AgentTest takes a different approach: **test your agent from the outside, over HTTP, exactly as it runs in production.** Write YAML files, commit them alongside your code, run them in CI.
+Most AI evaluation tools require SDK instrumentation — you modify your agent's code to test it. AgentTest takes a different approach: **test from the outside, over HTTP, exactly as your agent runs in production.** Write YAML, commit it alongside your code, run it in CI.
 
 ## Install
 
@@ -252,6 +252,10 @@ Exit codes: `0` = all passed, `2` = test failures, `1` = config error.
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for a complete example with matrix testing across Python 3.12 and 3.13.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and development workflow.
+
 ## Development
 
 ```bash
@@ -261,10 +265,13 @@ uv sync --dev
 uv run pytest -q
 ```
 
-Run the full local CI (unit tests + smoke suite against a mock endpoint):
+Available `make` targets:
 
 ```bash
-make ci
+make sync     # Install/sync dependencies
+make test     # Run unit tests
+make smoke    # Mock server + CLI smoke suite
+make ci       # Full local CI (sync + test + smoke)
 ```
 
 ## Architecture
@@ -279,6 +286,8 @@ The adapter layer is extensible — new transport types (subprocess, SDK, etc.) 
 
 - Subprocess and SDK adapters
 - Variant compare mode (model/prompt matrices)
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
