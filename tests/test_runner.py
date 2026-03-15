@@ -2,6 +2,7 @@ from pathlib import Path
 
 from agenttest.adapters import AdapterResponse
 from agenttest.runner import RunOptions, Runner
+from agenttest.snapshots import snapshot_path
 from agenttest.spec import AdapterConfig, CaseSpec, Suite, TurnSpec
 
 
@@ -223,3 +224,12 @@ def test_conversation_test(tmp_path: Path):
     report = runner.run(RunOptions())
     assert report["tests"][0]["status"] == "passed"
     assert report["tests"][0]["reason"] == "all turns passed"
+
+
+def test_snapshot_path_rejects_path_traversal(tmp_path: Path):
+    try:
+        snapshot_path(tmp_path, "../escape", "test")
+    except ValueError as exc:
+        assert "unsafe path characters" in str(exc) or "relative-path-like" in str(exc)
+    else:
+        raise AssertionError("expected snapshot_path to reject unsafe suite names")
