@@ -3,8 +3,7 @@
 **pytest for AI agent endpoints.** Define test suites in YAML, run them against any HTTP endpoint, get deterministic pass/fail results with snapshot regression tracking.
 
 [![CI](https://github.com/Ameen93/agenttest/actions/workflows/ci.yml/badge.svg)](https://github.com/Ameen93/agenttest/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/agenttest)](https://pypi.org/project/agenttest/)
-[![Python](https://img.shields.io/pypi/pyversions/agenttest)](https://pypi.org/project/agenttest/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -13,14 +12,17 @@ Most AI evaluation tools require SDK instrumentation — you modify your agent's
 
 ## Install
 
+Not on PyPI: the name `agenttest` is already taken there by an unrelated
+project, so install from source.
+
 ```bash
-pip install agenttest
+pip install git+https://github.com/Ameen93/agenttest
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add agenttest
+uv pip install git+https://github.com/Ameen93/agenttest
 ```
 
 ## Quickstart
@@ -101,7 +103,7 @@ assertions:
 Requires the optional `anthropic` dependency:
 
 ```bash
-pip install agenttest[llm-judge]
+pip install "agenttest[llm-judge] @ git+https://github.com/Ameen93/agenttest"
 ```
 
 ## Snapshot Testing

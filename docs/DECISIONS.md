@@ -46,7 +46,7 @@ tags: agenttest, dev-tool, ai-testing, python, cli
 
 ## Open Questions
 
-- **PyPI/GitHub status** — README shows CI badges and PyPI links. Unclear if these are currently green/live or aspirational.
+- **PyPI/GitHub status** — resolved 2026-09-28: the PyPI name `agenttest` belongs to an unrelated project, so the PyPI badges and `pip install agenttest` instructions were removed in favour of installing from git. Decide whether to rename the package if PyPI distribution is wanted.
 - **Roadmap priorities** — Subprocess adapter, SDK adapter, and variant compare mode are listed. No indication of which is next or timeline.
 - **Report history** — `report --last` only shows the most recent run. No way to query, compare, or trend across historical reports (though they're saved as timestamped JSON).
 - **Streaming + JSON assertions** — Streaming mode sets `body_json` to None. Should JSON path assertions work on parsed streaming content? Current behavior silently fails.
